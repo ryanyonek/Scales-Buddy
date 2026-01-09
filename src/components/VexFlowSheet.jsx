@@ -22,33 +22,24 @@ export default function VexFlowSheet() {
   var octaveIndex = 0;
 
   useEffect(() => {
-    var targetName = "B Major";
+  var octaveIndex = clef === "treble" ? 2 : 0; // reset per render
+  const foundScale = scales.find((scale) => scale.name === "Bb Major");
+  const key = foundScale.key;
+  const foundNotes = [...foundScale.notes];
 
-    const foundScale = scales.find((scale) => scale.name === targetName);
-    let key = foundScale.key;
-    //key = "C";
-    const foundNotes = [...foundScale.notes]; // clone
-      console.log(foundNotes);
-    const accidentals = [];
+  const accidentals = [];
 
-    foundNotes.forEach((note, i) => {
-      // Remove any existing octave (defensive)
-      const baseNote = note.split("/")[0];
+  foundNotes.forEach((note, i) => {
+    const baseNote = note.split("/")[0];
+    accidentals[i] = baseNote[1] ?? "";
 
-      // Accidental
-      accidentals[i] = baseNote[1] ?? "";
+    // Only increment octave for 'c', but clamp to octave array
+    if (baseNote[0] === "c") {
+      octaveIndex = Math.min(octaveIndex + 1, octave.length - 1);
+    }
 
-      // Octave logic
-      if (clef === "treble") {
-        if (octaveIndex < 2) octaveIndex = 2;
-        if (baseNote[0] === "c") octaveIndex++;
-      } else if (clef === "bass") {
-        if (octaveIndex < 1) octaveIndex = 0;
-        if (baseNote[0] === "c") octaveIndex++;
-      }
-
-      foundNotes[i] = `${baseNote}/${octave[octaveIndex]}`;
-    });
+    foundNotes[i] = `${baseNote}/${octave[octaveIndex]}`;
+  });
     console.log(accidentals);
 
     if (!containerRef.current) return;
