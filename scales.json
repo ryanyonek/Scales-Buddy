@@ -1,0 +1,86 @@
+[
+  {
+    "id": 0,
+    "name": "C Major",
+    "key": "C",
+    "notes": ["c", "d", "e", "f", "g", "a", "b", "c"]
+  },
+  {
+    "id": 1,
+    "name": "C# Major",
+    "key": "C#",
+    "notes": ["c#", "d#", "e#", "f#", "g#", "a#", "b#", "c#"]
+  },
+  {
+    "id": 2,
+    "name": "Db Major",
+    "key": "Db",
+    "notes": ["db", "eb", "f", "gb", "ab", "bb", "c", "db"]
+  },
+  {
+    "id": 3,
+    "name": "D Major",
+    "key": "D",
+    "notes": ["d", "e", "f#", "g", "a", "b", "c#", "d"]
+  },
+  {
+    "id": 4,
+    "name": "Eb Major",
+    "key": "Eb",
+    "notes": ["eb", "f", "g", "ab", "bb", "c", "d", "eb"]
+  },
+  {
+    "id": 5,
+    "name": "E Major",
+    "key": "E",
+    "notes": ["e", "f#", "g#", "a", "b", "c#", "d#", "e"]
+  },
+  {
+    "id": 6,
+    "name": "F Major",
+    "key": "F",
+    "notes": ["f", "g", "a", "bb", "c", "d", "e", "f"]
+  },
+  {
+    "id": 7,
+    "name": "F# Major",
+    "key": "F#",
+    "notes": ["f#", "g#", "a#", "b", "c#", "d#", "e#", "f#"]
+  },
+  {
+    "id": 8,
+    "name": "Gb Major",
+    "key": "Gb",
+    "notes": ["gb", "ab", "bb", "cb", "db", "eb", "f", "gb"]
+  },
+  {
+    "id": 9,
+    "name": "G Major",
+    "key": "G",
+    "notes": ["g", "a", "b", "c", "d", "e", "f#", "g"]
+  },
+  {
+    "id": 10,
+    "name": "Ab Major",
+    "key": "Ab",
+    "notes": ["ab", "bb", "c", "db", "eb", "f", "g", "ab"]
+  },
+  {
+    "id": 11,
+    "name": "A Major",
+    "key": "A",
+    "notes": ["a", "b", "c#", "d", "e", "f#", "g#", "a"]
+  },
+  {
+    "id": 12,
+    "name": "Bb Major",
+    "key": "Bb",
+    "notes": ["bb", "c", "d", "eb", "f", "g", "a", "bb"]
+  },
+  {
+    "id": 13,
+    "name": "B Major",
+    "key": "B",
+    "notes": ["b", "c#", "d#", "e", "f#", "g#", "a#", "b"]
+  }
+]
