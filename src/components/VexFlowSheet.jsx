@@ -1,8 +1,3 @@
-// for transposing, make a separate array of all 12 pitches, check the pitch against the one in the array to find its pitch class (index)
-// do mathmatical operations on that pitch class to shift to a different diatonic mode
-// find where the new pitch class is by reversing the process (plug the index in to find the transposed note)
-// replace the original note with the transposed note in the string and pass that into the StaveNote object
-
 import React, { useEffect, useRef, useState } from "react";
 import {
   Renderer,
@@ -18,12 +13,15 @@ export default function VexFlowSheet() {
   const containerRef = useRef(null);
   const octave = ["2", "3", "4", "5", "6"];
   const pitchClasses = ["B#/C", "C#/Db", "D", "D#/Eb", "E/Fb", "E#/F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B/Cb"];
+  const majorKeys = ["C#", "F#", "B", "E", "A", "D", "G", "C", "F",  "Bb", "Eb", "Ab", "Db", "Gb", "Cb"];
+  const minorKeys = ["A#", "D#", "G#", "C#","F#","B", "E", "A", "D", "G",  "C", "F", "Bb", "Eb", "Ab"]
   const modeOperations = ["Ionian", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian", "Locrian"];
 
   // React state
   const [selectedScaleName, setSelectedScaleName] = useState("Bb Major");
   const [selectedClef, setSelectedClef] = useState("treble");
-  const [selectedMode, setSelectedMode] = useState("Aeolian");
+  const [selectedMode, setSelectedMode] = useState("Ionian");
+  const [hasAccidentals, setHasAccidentals] = useState(true);
 
   useEffect(() => {
     let octaveIndex = selectedClef === "treble" ? 2 : 0;
@@ -54,7 +52,11 @@ export default function VexFlowSheet() {
     // Build notes with accidentals and an octave
     foundNotes.forEach((note, i) => {
       const baseNote = note.split("/")[0];
-      accidentals[i] = baseNote[1] ?? "";
+      if (!hasAccidentals) {
+        accidentals[i] = "";
+      } else {
+        accidentals[i] = baseNote[1] ?? "n";
+      }
 
       if (baseNote[0] === "c") {
         octaveIndex = Math.min(octaveIndex + 1, octave.length - 1);
@@ -106,7 +108,7 @@ export default function VexFlowSheet() {
 
     beam1.setContext(context).draw();
     beam2.setContext(context).draw();
-  }, [selectedScaleName, , selectedClef, selectedMode]); // 🔑 Re-run effect when scale changes
+  }, [selectedScaleName, selectedClef, selectedMode, hasAccidentals]); // 🔑 Re-run effect when these get updated
 
   return (
     <div style={{ width: "1000px", margin: "auto", padding: "20px" }}>
@@ -158,11 +160,22 @@ export default function VexFlowSheet() {
           </select>
         </label>
       </div>
+      <div style={{ marginBottom: "10px" }}>
+        {/* Checkbox for accidentals toggle */}
+        <label>
+          Show Accidentals {" "}
+          <input
+            type="checkbox"
+            checked={hasAccidentals} // Bind the 'checked' attribute to the state value
+            onChange={(e) => setHasAccidentals(e.target.checked)} // Call the handler function on change
+          />
+        </label>
+        {/* <p>Checkbox is currently: {hasAccidentals ? 'Checked' : 'Unchecked'}</p> */}
+      </div>
       {/* Display key and scale */}
       <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
         {selectedScaleName}
       </div>
-
       {/* Render sheet music */}
       <div ref={containerRef} />
     </div>
