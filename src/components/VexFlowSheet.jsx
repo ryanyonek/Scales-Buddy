@@ -6,17 +6,27 @@ import {
   Formatter,
   Accidental,
   Barline,
-  StaveConnector
+  StaveConnector,
+  Annotation,
+  Voice
 } from "vexflow";
 import scales from "./../../scales.json";
 
 export default function VexFlowSheet() {
   const containerRef = useRef(null);
-  const octave = ["2", "3", "4", "5", "6"];
+  const octaveLevels = ["2", "3", "4", "5", "6"];
   const diatonicOrder = ["c", "d", "e", "f", "g", "a", "b"];
   const majorKeys = ["C#", "F#", "B", "E", "A", "D", "G", "C", "F",  "Bb", "Eb", "Ab", "Db", "Gb", "Cb"];
   const minorKeys = ["A#", "D#", "G#", "C#","F#","B", "E", "A", "D", "G",  "C", "F", "Bb", "Eb", "Ab"]
-  const modeOperations = ["Ionian", "Dorian", "Phrygian", "Lydian", "Mixolydian", "Aeolian", "Locrian"];
+  const modeShifts = {
+    "Ionian": 0,
+    "Dorian": 1,
+    "Phrygian": 2,
+    "Lydian": 3,
+    "Mixolydian": 4,
+    "Aeolian": 5,
+    "Locrian": 6
+  };
   const scaleTypes = ["Major", "Natural Minor", "Harmonic Minor", "Melodic Minor"];
   const keySignatures = {
     "C": [],
@@ -55,181 +65,265 @@ export default function VexFlowSheet() {
     "Cb": { "b": "b", "e": "b", "a": "b", "d": "b", "g": "b", "c": "b", "f": "b"}
   };
 
+  const scaleDegrees = ["1", "2", "3", "4", "5", "6", "7", "8", "8", "7", "6", "5", "4", "3", "2", "1"];
+  const majorSolfege = ["Do", "Re", "Mi", "Fa", "Sol", "La", "Ti", "Do", "Do", "Ti", "La", "Sol", "Fa", "Mi", "Re", "Do"];
+  const naturalMinorSolfege = ["Do", "Re", "Me", "Fa", "Sol", "Le", "Te", "Do", "Do", "Te", "Le", "Sol", "Fa", "Me", "Re", "Do"];
+  const harmonicMinorSolfege = ["Do", "Re", "Me", "Fa", "Sol", "Le", "Ti", "Do", "Do", "Ti", "Le", "Sol", "Fa", "Me", "Re", "Do"];
+  const melodicMinorSolfege = ["Do", "Re", "Me", "Fa", "Sol", "La", "Ti", "Do", "Do", "Te", "Le", "Sol", "Fa", "Me", "Re", "Do"];
+  const LYRIC_Y = 30;
+
   // React state
-  const [selectedScaleName, setSelectedScaleName] = useState("C Major");
   const [selectedTonic, setSelectedTonic] = useState("C");
   const [selectedScale, setSelectedScale] = useState("Major");
   const [selectedClef, setSelectedClef] = useState("treble");
   const [selectedMode, setSelectedMode] = useState("Ionian");
   const [showCourtesyAccidentals, setShowCourtesyAccidentals] = useState(true);
   const [showAllAccidentals, setShowAllAccidentals] = useState(false);
-
-useEffect(() => {
-  if (!containerRef.current) return;
-
-  // --- Helpers ---
-  const getNoteParts = (note) => {
-    const match = note.match(/^([a-g])(bb|##|b|#)?$/i);
-    return { letter: match[1].toLowerCase(), accidental: match[2] ?? null };
-  };
-
-  const accidentalToSymbol = (acc) => acc || "n";
-
-  const needsAccidental = (note, key) => {
-    const { letter, accidental } = getNoteParts(note);
-    const keyAcc = keySignatures[key]?.find((k) => k[0].toLowerCase() === letter);
-    if (!keyAcc && !accidental) return false;
-    if (!keyAcc && accidental) return true;
-    if (keyAcc && !accidental) return true;
-    if (keyAcc && accidental) return keyAcc[1] !== accidental;
-    return false;
-  };
+  const [selectedLyric, setSelectedLyric] = useState("Note Names");
 
   // --- Ensure tonic is valid ---
-  if (selectedScale === "Major" && !majorKeys.includes(selectedTonic)) setSelectedTonic("C");
-  else if (selectedScale !== "Major" && !minorKeys.includes(selectedTonic)) setSelectedTonic("A");
+  useEffect(() => {
+    if (selectedScale === "Major" && !majorKeys.includes(selectedTonic)) {
+      setSelectedTonic("C");
+    } else if (selectedScale !== "Major" && !minorKeys.includes(selectedTonic)) {
+      setSelectedTonic("A");
+    }
+  }, [selectedScale, selectedTonic]);
 
-  setSelectedScaleName(`${selectedTonic} ${selectedScale}`);
 
-  const scaleName = `${selectedTonic} ${selectedScale}`;
-  const foundScale = scales.find((s) => s.name === scaleName);
-  if (!foundScale) return;
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-  const key = foundScale.key;
-  const notes = [...foundScale.notes];
+    // --- Helpers ---
+    const getNoteParts = (note) => {
+      const match = note.match(/^([a-g])(bb|##|b|#)?$/i);
+      return { letter: match[1].toLowerCase(), accidental: match[2] ?? null };
+    };
 
-  // --- Apply mode for major scales ---
-  let modeNotes = [...notes];
-  if (selectedScale === "Major" && selectedMode !== "Ionian") {
-    const shift = modeOperations.indexOf(selectedMode);
-    if (shift > 0) modeNotes = [...notes.slice(shift), ...notes.slice(0, shift)];
-  }
+    const accidentalToSymbol = (acc) => acc || "n";
 
-  // --- Split measures ---
-  const firstMeasureNotesRaw = modeNotes.slice(0, 8);
-  const secondMeasureNotesRaw = modeNotes.slice(-8);
+    const needsAccidental = (note, key) => {
+      const { letter, accidental } = getNoteParts(note);
+      const keyAcc = keySignatures[key]?.find((k) => k[0].toLowerCase() === letter);
+      if (!keyAcc && !accidental) return false;
+      if (!keyAcc && accidental) return true;
+      if (keyAcc && !accidental) return true;
+      if (keyAcc && accidental) return keyAcc[1] !== accidental;
+      return false;
+    };
 
-  // --- Octave & diatonic tracking ---
-  const octaveLevels = ["2", "3", "4", "5", "6"];
-  let octaveIndex = selectedClef === "treble" ? 2 : 1;
-  let lastPitchIndex = null;
+    const scaleName = `${selectedTonic} ${selectedScale}`;
+    const foundScale = scales.find((s) => s.name === scaleName);
+    if (!foundScale) return;
 
-  // --- First measure notes ---
-  const firstMeasureNotes = firstMeasureNotesRaw.map((note) => {
-    const base = note.split("/")[0];
-    const pitchIndex = diatonicOrder.indexOf(base[0]);
-    if (lastPitchIndex !== null && lastPitchIndex > pitchIndex) octaveIndex++;
-    lastPitchIndex = pitchIndex;
-    return `${base}/${octaveLevels[octaveIndex]}`;
-  });
+    const key = foundScale.key;
+    const notes = [...foundScale.notes];
 
-  const firstMeasureAccidentals = firstMeasureNotesRaw.map((note) => {
-    const base = note.split("/")[0];
-    if (showAllAccidentals) return accidentalToSymbol(getNoteParts(base).accidental ?? "n");
-    if (needsAccidental(base, key)) return accidentalToSymbol(getNoteParts(base).accidental);
-    return null;
-  });
+    // --- Helper: Capitalize note names properly ---
+    const capitalizeNoteName = (note) => {
+      if (!note) return "";
+      return note[0].toUpperCase() + note.slice(1); // keeps b/#/bb/## intact
+    };
 
-  // --- Second measure notes (descending) ---
-  let descendingOctaveIndex = octaveIndex;
-  let lastPitchIndexDesc = null;
+    // --- Helper: Assign octaves for ascending sequences ---
+    const assignOctavesAscending = (notesArray, startingOctave) => {
+      let octave = startingOctave;
+      let lastIndex = null;
+      return notesArray.map((note) => {
+        const base = note.split("/")[0];
+        const pitchIndex = diatonicOrder.indexOf(base[0]);
+        if (lastIndex !== null && pitchIndex < lastIndex) octave++; // wrap from B -> C
+        lastIndex = pitchIndex;
+        return `${base}/${octaveLevels[octave]}`;
+      });
+    };
 
-  const secondMeasureNotes = secondMeasureNotesRaw.map((note) => {
-    const base = note.split("/")[0];
-    const pitchIndex = diatonicOrder.indexOf(base[0]);
-    if (lastPitchIndexDesc !== null && lastPitchIndexDesc < pitchIndex) descendingOctaveIndex--;
-    lastPitchIndexDesc = pitchIndex;
-    return `${base}/${octaveLevels[descendingOctaveIndex]}`;
-  });
+    // --- Helper: Assign octaves for descending sequences ---
+    const assignOctavesDescending = (notesArray, startingOctave) => {
+      let octave = startingOctave;
+      let lastIndex = null;
+      return notesArray.map((note) => {
+        const base = note.split("/")[0];
+        const pitchIndex = diatonicOrder.indexOf(base[0]);
+        if (lastIndex !== null && pitchIndex > lastIndex) octave--; // wrap from C -> B
+        lastIndex = pitchIndex;
+        return `${base}/${octaveLevels[octave]}`;
+      });
+    };
 
-  const secondMeasureAccidentals = secondMeasureNotes.map((note, i) => {
-  const base = note.split("/")[0];
-  const { accidental } = getNoteParts(base);
+    // --- Apply mode for major scales ---
+    let modeNotes = notes.slice(0, 7); // first 7 notes only
+    console.log("Mode notes pre operation", modeNotes);
+    console.log("Selected Mode", selectedMode);
 
-  // Show all accidentals
-  if (showAllAccidentals) return { symbol: accidentalToSymbol(accidental ?? "n"), cautionary: false };
+    // Rotate for selected mode
+    if (selectedScale === "Major" && selectedMode !== "Ionian") {
+      const shift = modeShifts[selectedMode] || 0;
+      modeNotes = [...modeNotes.slice(shift), ...modeNotes.slice(0, shift)];
+    }
 
-  // --- Harmonic Minor: 7th degree always shows its accidental ---
-  if (selectedScale === "Harmonic Minor") {
-    const harmonicMinorScale = scales.find(
-      (s) => s.name === `${selectedTonic} Harmonic Minor`
-    )?.notes;
+    // --- Prepare first and second measures ---
+    // First measure: first 7 notes + repeat first note at end
+    let firstMeasureNotesRaw = modeNotes.slice(0,7);
+    firstMeasureNotesRaw.push(firstMeasureNotesRaw[0]);
 
-    if (harmonicMinorScale) {
-      const descendingIndex = secondMeasureNotes.length - 1 - i; // map to ascending scale
-      if (descendingIndex === 6) { // 7th degree
-        const targetNote = harmonicMinorScale[descendingIndex].split("/")[0];
-        const { accidental: targetAcc } = getNoteParts(targetNote);
-        return { symbol: accidentalToSymbol(targetAcc ?? "n"), cautionary: false };
+    // Second measure: last 7 notes, reversed + repeat first note at end
+    let secondMeasureNotesRaw = firstMeasureNotesRaw.slice(0,8).reverse();
+
+    // --- Octave assignment ---
+    const startingOctave = selectedClef === "treble" ? 2 : 1;
+    const firstMeasureNotes = assignOctavesAscending(firstMeasureNotesRaw, startingOctave);
+    const secondMeasureNotes = assignOctavesDescending(secondMeasureNotesRaw, startingOctave + 1); //
+
+    // --- Accidentals for first measure ---
+    const firstMeasureAccidentals = firstMeasureNotesRaw.map((note) => {
+      const base = note.split("/")[0];
+      if (showAllAccidentals) return accidentalToSymbol(getNoteParts(base).accidental ?? "n");
+      if (needsAccidental(base, key)) return accidentalToSymbol(getNoteParts(base).accidental);
+      return null;
+    });
+
+    // --- Accidentals for second measure ---
+    const secondMeasureAccidentals = secondMeasureNotes.map((note, i) => {
+      const base = note.split("/")[0];
+      const { accidental } = getNoteParts(base);
+
+      if (showAllAccidentals) return { symbol: accidentalToSymbol(accidental ?? "n"), cautionary: false };
+
+      if (selectedScale === "Harmonic Minor") {
+        const harmonicMinorScale = scales.find(
+          (s) => s.name === `${selectedTonic} Harmonic Minor`
+        )?.notes;
+        if (harmonicMinorScale) {
+          const descendingIndex = secondMeasureNotes.length - 1 - i;
+          if (descendingIndex === 6) {
+            const targetNote = harmonicMinorScale[descendingIndex].split("/")[0];
+            const { accidental: targetAcc } = getNoteParts(targetNote);
+            return { symbol: accidentalToSymbol(targetAcc ?? "n"), cautionary: false };
+          }
+        }
       }
-    }
-  }
 
-  // --- Melodic Minor descending courtesy: 7th and 6th degrees ---
-  if (showCourtesyAccidentals && selectedScale === "Melodic Minor") {
-    const naturalMinorScale = scales.find(
-      (s) => s.name === `${selectedTonic} Natural Minor`
-    )?.notes;
-
-    if (naturalMinorScale) {
-      const descendingIndex = secondMeasureNotes.length - 1 - i;
-      if (descendingIndex === 6 || descendingIndex === 5) { // 7th and 6th
-        const targetNote = naturalMinorScale[descendingIndex].split("/")[0];
-        const { accidental: targetAcc } = getNoteParts(targetNote);
-        return { symbol: accidentalToSymbol(targetAcc ?? "n"), cautionary: true };
+      if (showCourtesyAccidentals && selectedScale === "Melodic Minor") {
+        const naturalMinorScale = scales.find(
+          (s) => s.name === `${selectedTonic} Natural Minor`
+        )?.notes;
+        if (naturalMinorScale) {
+          const descendingIndex = secondMeasureNotes.length - 1 - i;
+          if (descendingIndex === 6 || descendingIndex === 5) {
+            const targetNote = naturalMinorScale[descendingIndex].split("/")[0];
+            const { accidental: targetAcc } = getNoteParts(targetNote);
+            return { symbol: accidentalToSymbol(targetAcc ?? "n"), cautionary: true };
+          }
+        }
       }
-    }
-  }
 
-  // Otherwise, no accidental
-  return { symbol: "", cautionary: false };
-});
+      return { symbol: "", cautionary: false };
+    });
+    // --- Split lyrics ---
+    let firstMeasureLyrics = [];
+    let secondMeasureLyrics = [];
 
-  // --- Render ---
-  containerRef.current.innerHTML = "";
-  const renderer = new Renderer(containerRef.current, Renderer.Backends.SVG);
-  renderer.resize(1000, 300);
-  const context = renderer.getContext();
-
-  // --- First stave ---
-  const stave1 = new Stave(0, 40, 400);
-  stave1.addClef(selectedClef).addKeySignature(key).setContext(context).draw();
-
-  const notes1VF = firstMeasureNotes.map((n, i) => {
-    const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
-    const acc = firstMeasureAccidentals[i];
-    if (acc) note.addModifier(new Accidental(acc), 0);
-    return note;
-  });
-
-  // --- Second stave ---
-  const stave2 = new Stave(400, 40, 400);
-  stave2.setContext(context).setEndBarType(Barline.type.DOUBLE).draw();
-
-  const notes2VF = secondMeasureNotes.map((n, i) => {
-    const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
-
-    // Ignore key signature for this note so accidentals work correctly
-    note.ignoreKeySignature = true;
-
-    const acc = secondMeasureAccidentals[i];
-
-    if (acc && acc.symbol !== "") {
-      const accidental = new Accidental(acc.symbol);
-      if (acc.cautionary) accidental.setAsCautionary();
-      note.addModifier(accidental, 0);
+    if (selectedLyric === "Note Names") {
+      firstMeasureLyrics = firstMeasureNotesRaw.map(capitalizeNoteName);
+      secondMeasureLyrics = secondMeasureNotesRaw.map(capitalizeNoteName);
+    } else if (selectedLyric === "Scale Degrees") {
+      firstMeasureLyrics = scaleDegrees.slice(0, 8);
+      secondMeasureLyrics = scaleDegrees.slice(-8);
+    } else if (selectedLyric === "Solfege") {
+      const solfegeMap = {
+        "Major": majorSolfege,
+        "Natural Minor": naturalMinorSolfege,
+        "Harmonic Minor": harmonicMinorSolfege,
+        "Melodic Minor": melodicMinorSolfege,
+      };
+      firstMeasureLyrics = solfegeMap[selectedScale].slice(0, 8);
+      secondMeasureLyrics = solfegeMap[selectedScale].slice(-8);
     }
 
-    return note;
-  });
-  Formatter.FormatAndDraw(context, stave1, notes1VF);
-  Formatter.FormatAndDraw(context, stave2, notes2VF);
+    // --- Render ---
+    containerRef.current.innerHTML = "";
+    const renderer = new Renderer(containerRef.current, Renderer.Backends.SVG);
+    renderer.resize(1000, 300);
+    const context = renderer.getContext();
 
-  const connector = new StaveConnector(stave1, stave2);
-  connector.setType(StaveConnector.type.SINGLE);
-  connector.setContext(context);
-  connector.draw();
-}, [selectedTonic, selectedScale, selectedClef, selectedMode, showCourtesyAccidentals, showAllAccidentals]);
+    // --- First stave ---
+    const stave1 = new Stave(0, 40, 400);
+    stave1.addClef(selectedClef).addKeySignature(key).setContext(context).draw();
+
+    const notes1VF = firstMeasureNotes.map((n, i) => {
+      const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
+      const acc = firstMeasureAccidentals[i];
+      const lyric = firstMeasureLyrics[i];
+      if (acc) note.addModifier(new Accidental(acc), 0);
+      note.setStave(stave1);
+      if (lyric) {
+        const ann = new Annotation(lyric)
+          .setFont("Times", 12)
+          .setVerticalJustification(Annotation.VerticalJustify.BOTTOM)
+          .setJustification(Annotation.HorizontalJustify.CENTER);
+
+        ann.setYShift(0); // remove default note-relative shift
+        ann.y = note.getStave().getYForBottomText() + LYRIC_Y; // fixed distance below staff
+
+        note.addModifier(ann, 0);
+      }
+      return note;
+    });
+
+    // --- Second stave ---
+    const stave2 = new Stave(400, 40, 400);
+    stave2.setContext(context).setEndBarType(Barline.type.DOUBLE).draw();
+
+    const notes2VF = secondMeasureNotes.map((n, i) => {
+      const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
+
+      // Ignore key signature for this note so accidentals work correctly
+      note.ignoreKeySignature = true;
+
+      const acc = secondMeasureAccidentals[i];
+      const lyric = secondMeasureLyrics[i];
+
+      if (acc && acc.symbol !== "") {
+        const accidental = new Accidental(acc.symbol);
+        if (acc.cautionary) accidental.setAsCautionary();
+        note.addModifier(accidental, 0);
+      }
+      note.setStave(stave2);
+      if (lyric) {
+        const ann = new Annotation(lyric)
+          .setFont("Times", 12)
+          .setVerticalJustification(Annotation.VerticalJustify.BOTTOM)
+          .setJustification(Annotation.HorizontalJustify.CENTER);
+
+        ann.setYShift(0); // remove default note-relative shift
+        ann.y = note.getStave().getYForBottomText() + LYRIC_Y; // fixed distance below staff
+
+        note.addModifier(ann, 0);
+      }
+      return note;
+    });
+    // ---- First measure ----
+    const voice1 = new Voice({ num_beats: 32, beat_value: 4 });
+    voice1.setStrict(false);
+    voice1.addTickables(notes1VF);
+
+    // ---- Second measure ----
+    const voice2 = new Voice({ num_beats: 32, beat_value: 4 });
+    voice2.setStrict(false);
+    voice2.addTickables(notes2VF);
+
+    const formatter = new Formatter();
+
+    // Lock widths explicitly
+    formatter.joinVoices([voice1]).joinVoices([voice2]);
+
+    formatter.formatToStave([voice1], stave1, { minTotalWidth: 400 });
+    formatter.formatToStave([voice2], stave2, { minTotalWidth: 400 });
+
+    voice1.draw(context, stave1);
+    voice2.draw(context, stave2);
+  }, [selectedTonic, selectedScale, selectedClef, selectedMode, showCourtesyAccidentals, showAllAccidentals, selectedLyric]);
 
 
   return (
@@ -286,6 +380,12 @@ useEffect(() => {
               <option key={1} value={"bass"}>
                 {"Bass"}
               </option>
+              <option key={2} value={"alto"}>
+                {"Alto"}
+              </option>
+              <option key={3} value={"tenor"}>
+                {"Tenor"}
+              </option>
           </select>
         </label>
       </div>
@@ -298,7 +398,7 @@ useEffect(() => {
               value={selectedMode}
               onChange={(e) => setSelectedMode(e.target.value)}
             >
-              {modeOperations.map((mode) => (
+              {Object.keys(modeShifts).map((mode) => (
                 <option key={mode} value={mode}>
                   {mode}
                 </option>
@@ -333,9 +433,29 @@ useEffect(() => {
         </label>
         {/* <p>Checkbox is currently: {showAllAccidentals ? 'Checked' : 'Unchecked'}</p> */}
       </div>
+            {/* Dropdown to select clef */}
+      <div style={{ marginBottom: "10px" }}>
+        <label>
+          Lyrics Type:{" "}
+          <select
+            value={selectedLyric}
+            onChange={(e) => setSelectedLyric(e.target.value)}
+          >
+              <option key={0} value={"Note Names"}>
+                {"Note Names"}
+              </option>
+              <option key={1} value={"Scale Degrees"}>
+                {"Scale Degrees"}
+              </option>
+              <option key={2} value={"Solfege"}>
+                {"Solfege"}
+              </option>
+          </select>
+        </label>
+      </div>
       {/* Display key and scale */}
       <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
-        {selectedScaleName}
+        {`${selectedTonic} ${selectedScale}`}
       </div>
       {/* Render sheet music */}
       <div ref={containerRef} />
