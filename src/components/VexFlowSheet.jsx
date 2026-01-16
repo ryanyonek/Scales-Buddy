@@ -80,6 +80,9 @@ export default function VexFlowSheet() {
   const [showCourtesyAccidentals, setShowCourtesyAccidentals] = useState(true);
   const [showAllAccidentals, setShowAllAccidentals] = useState(false);
   const [selectedLyric, setSelectedLyric] = useState("Note Names");
+  const [octaveShift, setOctaveShift] = useState("current"); 
+  const [showNoteLabels, setShowNoteLabels] = useState(true);
+  const [directionMode, setDirectionMode] = useState("both");
 
   // --- Ensure tonic is valid ---
   useEffect(() => {
@@ -96,15 +99,27 @@ export default function VexFlowSheet() {
 
     // --- Helpers ---
     const getNoteParts = (note) => {
-      const match = note.match(/^([a-g])(bb|##|b|#)?$/i);
-      return { letter: match[1].toLowerCase(), accidental: match[2] ?? null };
+      const base = note.split("/")[0];
+      const match = base.match(/^([a-g])(bb|##|b|#)?$/i);
+      if (!match) return { letter: null, accidental: null };
+
+      return {
+        letter: match[1].toLowerCase(),
+        accidental: match[2] ?? null,
+      };
     };
 
     const accidentalToSymbol = (acc) => acc || "n";
 
     const needsAccidental = (note, key) => {
       const { letter, accidental } = getNoteParts(note);
-      const keyAcc = keySignatures[key]?.find((k) => k[0].toLowerCase() === letter);
+      if (!letter) return false;
+
+      const keyAccList = keySignatures[key] ?? [];
+      const keyAcc = keyAccList.find(
+        (k) => k[0].toLowerCase() === letter
+      );
+
       if (!keyAcc && !accidental) return false;
       if (!keyAcc && accidental) return true;
       if (keyAcc && !accidental) return true;
@@ -151,6 +166,17 @@ export default function VexFlowSheet() {
       });
     };
 
+    const getOctaveOffset = () => {
+      switch (octaveShift) {
+        case "8vb":
+          return -1;
+        case "8va":
+          return 1;
+        default:
+          return 0;
+      }
+    };
+
     // --- Apply mode for major scales ---
     let modeNotes = notes.slice(0, 7); // first 7 notes only
     console.log("Mode notes pre operation", modeNotes);
@@ -170,8 +196,19 @@ export default function VexFlowSheet() {
     // Second measure: last 7 notes, reversed + repeat first note at end
     let secondMeasureNotesRaw = firstMeasureNotesRaw.slice(0,8).reverse();
 
+    // --- Apply direction mode ---
+    if (directionMode === "ascending") {
+      secondMeasureNotesRaw = [];
+    }
+
+    if (directionMode === "descending") {
+      firstMeasureNotesRaw = [];
+}
+
     // --- Octave assignment ---
-    const startingOctave = selectedClef === "treble" ? 2 : 1;
+    const octaveOffset = getOctaveOffset();
+
+    const startingOctave = (selectedClef === "treble" ? 2 : 1) + octaveOffset;
     const firstMeasureNotes = assignOctavesAscending(firstMeasureNotesRaw, startingOctave);
     const secondMeasureNotes = assignOctavesDescending(secondMeasureNotesRaw, startingOctave + 1); //
 
@@ -223,8 +260,10 @@ export default function VexFlowSheet() {
     // --- Split lyrics ---
     let firstMeasureLyrics = [];
     let secondMeasureLyrics = [];
-
-    if (selectedLyric === "Note Names") {
+    if (!showNoteLabels) {
+      firstMeasureLyrics = [];
+      secondMeasureLyrics = [];
+    } else if (selectedLyric === "Note Names") {
       firstMeasureLyrics = firstMeasureNotesRaw.map(capitalizeNoteName);
       secondMeasureLyrics = secondMeasureNotesRaw.map(capitalizeNoteName);
     } else if (selectedLyric === "Scale Degrees") {
@@ -242,88 +281,110 @@ export default function VexFlowSheet() {
     }
 
     // --- Render ---
-    containerRef.current.innerHTML = "";
-    const renderer = new Renderer(containerRef.current, Renderer.Backends.SVG);
-    renderer.resize(1000, 300);
-    const context = renderer.getContext();
+    try {
+       containerRef.current.innerHTML = "";
+      const renderer = new Renderer(containerRef.current, Renderer.Backends.SVG);
+      renderer.resize(1500, 1000);
+      const context = renderer.getContext();
 
-    // --- First stave ---
-    const stave1 = new Stave(0, 40, 400);
-    stave1.addClef(selectedClef).addKeySignature(key).setContext(context).draw();
+      let stave1 = null;
+      let stave2 = null;
 
-    const notes1VF = firstMeasureNotes.map((n, i) => {
-      const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
-      const acc = firstMeasureAccidentals[i];
-      const lyric = firstMeasureLyrics[i];
-      if (acc) note.addModifier(new Accidental(acc), 0);
-      note.setStave(stave1);
-      if (lyric) {
-        const ann = new Annotation(lyric)
-          .setFont("Times", 12)
-          .setVerticalJustification(Annotation.VerticalJustify.BOTTOM)
-          .setJustification(Annotation.HorizontalJustify.CENTER);
-
-        ann.setYShift(0); // remove default note-relative shift
-        ann.y = note.getStave().getYForBottomText() + LYRIC_Y; // fixed distance below staff
-
-        note.addModifier(ann, 0);
+      if (firstMeasureNotesRaw.length > 0) {
+        stave1 = new Stave(0, 40, 400);
+        stave1.addClef(selectedClef).addKeySignature(key).setContext(context).draw();
       }
-      return note;
-    });
 
-    // --- Second stave ---
-    const stave2 = new Stave(400, 40, 400);
-    stave2.setContext(context).setEndBarType(Barline.type.DOUBLE).draw();
-
-    const notes2VF = secondMeasureNotes.map((n, i) => {
-      const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
-
-      // Ignore key signature for this note so accidentals work correctly
-      note.ignoreKeySignature = true;
-
-      const acc = secondMeasureAccidentals[i];
-      const lyric = secondMeasureLyrics[i];
-
-      if (acc && acc.symbol !== "") {
-        const accidental = new Accidental(acc.symbol);
-        if (acc.cautionary) accidental.setAsCautionary();
-        note.addModifier(accidental, 0);
+      if (secondMeasureNotesRaw.length > 0) {
+        stave2 = new Stave(400, 40, 400);
+        stave2.setContext(context).setEndBarType(Barline.type.DOUBLE).draw();
       }
-      note.setStave(stave2);
-      if (lyric) {
-        const ann = new Annotation(lyric)
-          .setFont("Times", 12)
-          .setVerticalJustification(Annotation.VerticalJustify.BOTTOM)
-          .setJustification(Annotation.HorizontalJustify.CENTER);
 
-        ann.setYShift(0); // remove default note-relative shift
-        ann.y = note.getStave().getYForBottomText() + LYRIC_Y; // fixed distance below staff
+      let notes1VF = [];
+      if (firstMeasureNotesRaw.length > 0) {
+        notes1VF = firstMeasureNotes.map((n, i) => {
+          const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
+          note.setStave(stave1); // ✅ now valid
 
-        note.addModifier(ann, 0);
+          const acc = firstMeasureAccidentals[i];
+          const lyric = firstMeasureLyrics[i];
+
+          if (acc) note.addModifier(new Accidental(acc), 0);
+
+          if (lyric) {
+            const ann = new Annotation(lyric)
+              .setFont("Times", 12)
+              .setVerticalJustification(Annotation.VerticalJustify.BOTTOM)
+              .setJustification(Annotation.HorizontalJustify.CENTER);
+
+            ann.y = stave1.getYForBottomText() + LYRIC_Y;
+            note.addModifier(ann, 0);
+          }
+
+          return note;
+        });
       }
-      return note;
-    });
-    // ---- First measure ----
-    const voice1 = new Voice({ num_beats: 32, beat_value: 4 });
-    voice1.setStrict(false);
-    voice1.addTickables(notes1VF);
 
-    // ---- Second measure ----
-    const voice2 = new Voice({ num_beats: 32, beat_value: 4 });
-    voice2.setStrict(false);
-    voice2.addTickables(notes2VF);
+      let notes2VF = [];
+      if (secondMeasureNotesRaw.length > 0) {
+        notes2VF = secondMeasureNotes.map((n, i) => {
+          const note = new StaveNote({ keys: [n], duration: "w", clef: selectedClef });
+          note.setStave(stave2); // ✅ now valid
+          note.ignoreKeySignature = true;
 
-    const formatter = new Formatter();
+          const acc = secondMeasureAccidentals[i];
+          const lyric = secondMeasureLyrics[i];
 
-    // Lock widths explicitly
-    formatter.joinVoices([voice1]).joinVoices([voice2]);
+          if (acc && acc.symbol) {
+            const accidental = new Accidental(acc.symbol);
+            if (acc.cautionary) accidental.setAsCautionary();
+            note.addModifier(accidental, 0);
+          }
 
-    formatter.formatToStave([voice1], stave1, { minTotalWidth: 400 });
-    formatter.formatToStave([voice2], stave2, { minTotalWidth: 400 });
+          if (lyric) {
+            const ann = new Annotation(lyric)
+              .setFont("Times", 12)
+              .setVerticalJustification(Annotation.VerticalJustify.BOTTOM)
+              .setJustification(Annotation.HorizontalJustify.CENTER);
 
-    voice1.draw(context, stave1);
-    voice2.draw(context, stave2);
-  }, [selectedTonic, selectedScale, selectedClef, selectedMode, showCourtesyAccidentals, showAllAccidentals, selectedLyric]);
+            ann.y = stave2.getYForBottomText() + LYRIC_Y;
+            note.addModifier(ann, 0);
+          }
+
+          return note;
+        });
+      }
+
+      const createVoice = (noteCount) =>
+        new Voice({
+          num_beats: noteCount * 4,
+          beat_value: 4,
+        }).setStrict(false);
+
+      if (notes1VF.length > 0 && stave1) {
+        const voice1 = createVoice(notes1VF.length);
+        voice1.addTickables(notes1VF);
+        const formatter = new Formatter();
+
+        formatter.joinVoices([voice1]);
+        formatter.formatToStave([voice1], stave1);
+        voice1.draw(context, stave1);
+      }
+
+      if (notes2VF.length > 0 && stave2) {
+        const voice2 = createVoice(notes2VF.length);
+        voice2.addTickables(notes2VF);
+        const formatter = new Formatter();
+        formatter.joinVoices([voice2]);
+        formatter.formatToStave([voice2], stave2);
+        voice2.draw(context, stave2);
+      }
+
+      } catch (e) {
+        console.error("VexFlow render error:", e);
+    }
+    
+  }, [selectedTonic, selectedScale, selectedClef, selectedMode, showCourtesyAccidentals, showAllAccidentals, selectedLyric, octaveShift, showNoteLabels, directionMode]);
 
 
   return (
@@ -393,7 +454,7 @@ export default function VexFlowSheet() {
       {selectedScale === "Major" && (
         <div style={{ marginBottom: "10px" }}>
           <label>
-            Select Mode:{" "}
+            Select Major Mode:{" "}
             <select
               value={selectedMode}
               onChange={(e) => setSelectedMode(e.target.value)}
@@ -411,12 +472,12 @@ export default function VexFlowSheet() {
       {selectedScale === "Melodic Minor" && (
       <div style={{ marginBottom: "10px" }}>
         <label>
-          Show Courtesy Accidentals {" "}
           <input
             type="checkbox"
             checked={showCourtesyAccidentals} // Bind the 'checked' attribute to the state value
             onChange={(e) => setShowCourtesyAccidentals(e.target.checked)} // Call the handler function on change
           />
+          Show Courtesy Accidentals {" "}
         </label>
         {/* <p>Checkbox is currently: {showCourtesyAccidentals ? 'Checked' : 'Unchecked'}</p> */}
       </div>
@@ -424,35 +485,122 @@ export default function VexFlowSheet() {
       <div style={{ marginBottom: "10px" }}>
         {/* Checkbox for all accidentals toggle */}
         <label>
-          Show All Accidentals {" "}
           <input
             type="checkbox"
             checked={showAllAccidentals} // Bind the 'checked' attribute to the state value
             onChange={(e) => setShowAllAccidentals(e.target.checked)} // Call the handler function on change
           />
+          Show All Accidentals {" "}
         </label>
         {/* <p>Checkbox is currently: {showAllAccidentals ? 'Checked' : 'Unchecked'}</p> */}
       </div>
-            {/* Dropdown to select clef */}
+      {/* Toggle note labels */}
       <div style={{ marginBottom: "10px" }}>
         <label>
-          Lyrics Type:{" "}
+          <input
+            type="checkbox"
+            checked={showNoteLabels}
+            onChange={(e) => setShowNoteLabels(e.target.checked)}
+          />
+          {" "}Show Note Labels
+        </label>
+      </div>
+    {/* Lyrics type selector (only when enabled) */}
+    {showNoteLabels && (
+      <div style={{ marginBottom: "10px" }}>
+        <label>
+          Note Label:{" "}
           <select
             value={selectedLyric}
             onChange={(e) => setSelectedLyric(e.target.value)}
           >
-              <option key={0} value={"Note Names"}>
-                {"Note Names"}
-              </option>
-              <option key={1} value={"Scale Degrees"}>
-                {"Scale Degrees"}
-              </option>
-              <option key={2} value={"Solfege"}>
-                {"Solfege"}
-              </option>
+            <option value="Note Names">Note Names</option>
+            <option value="Scale Degrees">Scale Degrees</option>
+            <option value="Solfege">Solfege</option>
           </select>
         </label>
       </div>
+    )}
+    {/* Ascending, Descending, or both */}
+    <div style={{ marginBottom: "10px" }}>
+      <label style={{ fontWeight: "bold" }}>Scale Direction:</label>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="direction"
+            value="ascending"
+            checked={directionMode === "ascending"}
+            onChange={(e) => setDirectionMode(e.target.value)}
+          />
+          Ascending only
+        </label>
+      </div>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="direction"
+            value="descending"
+            checked={directionMode === "descending"}
+            onChange={(e) => setDirectionMode(e.target.value)}
+          />
+          Descending only
+        </label>
+      </div>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="direction"
+            value="both"
+            checked={directionMode === "both"}
+            onChange={(e) => setDirectionMode(e.target.value)}
+          />
+          Ascending & Descending
+        </label>
+      </div>
+    </div>
+    {/* Octave Toggle, 8va, default, or 8vb */}
+    <div style={{ marginBottom: "10px" }}>
+      <label style={{ fontWeight: "bold" }}>Octave:</label>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="octaveShift"
+            value="8vb"
+            checked={octaveShift === "8vb"}
+            onChange={(e) => setOctaveShift(e.target.value)}
+          />
+          8vb
+        </label>
+      </div>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="octaveShift"
+            value="current"
+            checked={octaveShift === "current"}
+            onChange={(e) => setOctaveShift(e.target.value)}
+          />
+          Current Octave
+        </label>
+      </div>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="octaveShift"
+            value="8va"
+            checked={octaveShift === "8va"}
+            onChange={(e) => setOctaveShift(e.target.value)}
+          />
+          8va
+        </label>
+      </div>
+    </div>
       {/* Display key and scale */}
       <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
         {`${selectedTonic} ${selectedScale}`}
