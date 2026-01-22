@@ -6,7 +6,6 @@ import {
   Formatter,
   Accidental,
   Barline,
-  StaveConnector,
   Annotation,
   Voice
 } from "vexflow";
@@ -95,13 +94,16 @@ export default function VexFlowSheet() {
 
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
+    if (!containerRef.current) {
+      return;
+    }
     // --- Helpers ---
     const getNoteParts = (note) => {
       const base = note.split("/")[0];
       const match = base.match(/^([a-g])(bb|##|b|#)?$/i);
-      if (!match) return { letter: null, accidental: null };
+      if (!match) {
+        return { letter: null, accidental: null };
+      }
 
       return {
         letter: match[1].toLowerCase(),
@@ -113,30 +115,44 @@ export default function VexFlowSheet() {
 
     const needsAccidental = (note, key) => {
       const { letter, accidental } = getNoteParts(note);
-      if (!letter) return false;
+      if (!letter) {
+        return false;
+      }
 
       const keyAccList = keySignatures[key] ?? [];
       const keyAcc = keyAccList.find(
         (k) => k[0].toLowerCase() === letter
       );
 
-      if (!keyAcc && !accidental) return false;
-      if (!keyAcc && accidental) return true;
-      if (keyAcc && !accidental) return true;
-      if (keyAcc && accidental) return keyAcc[1] !== accidental;
+      if (!keyAcc && !accidental) {
+        return false;
+      } 
+      if (!keyAcc && accidental) {
+        return true;
+      }
+      if (keyAcc && !accidental) {
+        return true;
+      }
+      if (keyAcc && accidental) {
+        return keyAcc[1] !== accidental;
+      }
       return false;
     };
 
     const scaleName = `${selectedTonic} ${selectedScale}`;
     const foundScale = scales.find((s) => s.name === scaleName);
-    if (!foundScale) return;
+    if (!foundScale) {
+      return;
+    }
 
     const key = foundScale.key;
     const notes = [...foundScale.notes];
 
     // --- Helper: Capitalize note names properly ---
     const capitalizeNoteName = (note) => {
-      if (!note) return "";
+      if (!note) {
+        return "";
+      }
       return note[0].toUpperCase() + note.slice(1); // keeps b/#/bb/## intact
     };
 
@@ -147,7 +163,9 @@ export default function VexFlowSheet() {
       return notesArray.map((note) => {
         const base = note.split("/")[0];
         const pitchIndex = diatonicOrder.indexOf(base[0]);
-        if (lastIndex !== null && pitchIndex < lastIndex) octave++; // wrap from B -> C
+        if (lastIndex !== null && pitchIndex < lastIndex) {
+          octave++; // wrap from B -> C
+        }
         lastIndex = pitchIndex;
         return `${base}/${octaveLevels[octave]}`;
       });
@@ -179,31 +197,77 @@ export default function VexFlowSheet() {
 
     // --- Apply mode for major scales ---
     let modeNotes = notes.slice(0, 7); // first 7 notes only
-    console.log("Mode notes pre operation", modeNotes);
-    console.log("Selected Mode", selectedMode);
+    const shift = modeShifts[selectedMode] || 0;
+
+    let firstMeasureLyrics = [];
+    let secondMeasureLyrics = [];
+
+    let firstMeasureNotesRaw = [];
+    let secondMeasureNotesRaw = [];
 
     // Rotate for selected mode
     if (selectedScale === "Major" && selectedMode !== "Ionian") {
-      const shift = modeShifts[selectedMode] || 0;
       modeNotes = [...modeNotes.slice(shift), ...modeNotes.slice(0, shift)];
-    }
+    } 
 
     // --- Prepare first and second measures ---
     // First measure: first 7 notes + repeat first note at end
-    let firstMeasureNotesRaw = modeNotes.slice(0,7);
+    firstMeasureNotesRaw = modeNotes.slice(0,7);
     firstMeasureNotesRaw.push(firstMeasureNotesRaw[0]);
 
     // Second measure: last 7 notes, reversed + repeat first note at end
-    let secondMeasureNotesRaw = firstMeasureNotesRaw.slice(0,8).reverse();
+    if (selectedScale === "Melodic Minor") {
+      secondMeasureNotesRaw = notes.slice(-8);
+    } else {
+      secondMeasureNotesRaw = firstMeasureNotesRaw.slice(0,8).reverse();
+    }
+    
+    // --- Split lyrics ---
+    let baseLyrics = [];
+    if (!showNoteLabels) {
+      firstMeasureLyrics = [];
+      secondMeasureLyrics = [];
+    } else if (selectedLyric === "Note Names") {
+      firstMeasureLyrics = firstMeasureNotesRaw.map(capitalizeNoteName);
+      secondMeasureLyrics = secondMeasureNotesRaw.map(capitalizeNoteName);
+    } else if (selectedLyric === "Scale Degrees") {
+      baseLyrics = scaleDegrees.slice(0, 7);
+      if (selectedScale === "Major" && selectedMode !== "Ionian") {
+        baseLyrics = [...baseLyrics.slice(shift), ...baseLyrics.slice(0, shift)];
+      } 
+      firstMeasureLyrics = baseLyrics.slice(0,7);
+      firstMeasureLyrics.push(firstMeasureLyrics[0]);
+      secondMeasureLyrics = firstMeasureLyrics.slice(0,8).reverse();
+    } else if (selectedLyric === "Solfege") {
+      const solfegeMap = {
+        "Major": majorSolfege,
+        "Natural Minor": naturalMinorSolfege,
+        "Harmonic Minor": harmonicMinorSolfege,
+        "Melodic Minor": melodicMinorSolfege,
+      };
+      baseLyrics = solfegeMap[selectedScale].slice(0, 7);
+      if (selectedScale === "Major" && selectedMode !== "Ionian") {
+        baseLyrics = [...baseLyrics.slice(shift), ...baseLyrics.slice(0, shift)];
+      } 
+      firstMeasureLyrics = baseLyrics.slice(0,7);
+      firstMeasureLyrics.push(firstMeasureLyrics[0]);
+      if (selectedScale === "Melodic Minor") {
+        secondMeasureLyrics = solfegeMap[selectedScale].slice(-8)
+      } else {
+        secondMeasureLyrics = firstMeasureLyrics.slice(0,8).reverse();
+      }
+    }
 
-    // --- Apply direction mode ---
+        // --- Apply direction mode ---
     if (directionMode === "ascending") {
       secondMeasureNotesRaw = [];
+      secondMeasureLyrics = [];
     }
 
     if (directionMode === "descending") {
       firstMeasureNotesRaw = [];
-}
+      firstMeasureLyrics = []
+    }
 
     // --- Octave assignment ---
     const octaveOffset = getOctaveOffset();
@@ -215,8 +279,12 @@ export default function VexFlowSheet() {
     // --- Accidentals for first measure ---
     const firstMeasureAccidentals = firstMeasureNotesRaw.map((note) => {
       const base = note.split("/")[0];
-      if (showAllAccidentals) return accidentalToSymbol(getNoteParts(base).accidental ?? "n");
-      if (needsAccidental(base, key)) return accidentalToSymbol(getNoteParts(base).accidental);
+      if (showAllAccidentals) {
+        return accidentalToSymbol(getNoteParts(base).accidental ?? "n");
+      }
+      if (needsAccidental(base, key)) {
+        return accidentalToSymbol(getNoteParts(base).accidental);
+      } 
       return null;
     });
 
@@ -224,8 +292,6 @@ export default function VexFlowSheet() {
     const secondMeasureAccidentals = secondMeasureNotes.map((note, i) => {
       const base = note.split("/")[0];
       const { accidental } = getNoteParts(base);
-
-      if (showAllAccidentals) return { symbol: accidentalToSymbol(accidental ?? "n"), cautionary: false };
 
       if (selectedScale === "Harmonic Minor") {
         const harmonicMinorScale = scales.find(
@@ -241,7 +307,7 @@ export default function VexFlowSheet() {
         }
       }
 
-      if (showCourtesyAccidentals && selectedScale === "Melodic Minor") {
+      if (selectedScale === "Melodic Minor") {
         const naturalMinorScale = scales.find(
           (s) => s.name === `${selectedTonic} Natural Minor`
         )?.notes;
@@ -250,35 +316,21 @@ export default function VexFlowSheet() {
           if (descendingIndex === 6 || descendingIndex === 5) {
             const targetNote = naturalMinorScale[descendingIndex].split("/")[0];
             const { accidental: targetAcc } = getNoteParts(targetNote);
-            return { symbol: accidentalToSymbol(targetAcc ?? "n"), cautionary: true };
+            if (showCourtesyAccidentals) {
+              return { symbol: accidentalToSymbol(targetAcc ?? "n"), cautionary: true };
+            } else if (showAllAccidentals) {
+              return { symbol: accidentalToSymbol(targetAcc ?? "n"), cautionary: false };
+            }
           }
         }
+      } 
+
+      if (showAllAccidentals) {
+        return { symbol: accidentalToSymbol(accidental ?? "n"), cautionary: false };
       }
 
       return { symbol: "", cautionary: false };
     });
-    // --- Split lyrics ---
-    let firstMeasureLyrics = [];
-    let secondMeasureLyrics = [];
-    if (!showNoteLabels) {
-      firstMeasureLyrics = [];
-      secondMeasureLyrics = [];
-    } else if (selectedLyric === "Note Names") {
-      firstMeasureLyrics = firstMeasureNotesRaw.map(capitalizeNoteName);
-      secondMeasureLyrics = secondMeasureNotesRaw.map(capitalizeNoteName);
-    } else if (selectedLyric === "Scale Degrees") {
-      firstMeasureLyrics = scaleDegrees.slice(0, 8);
-      secondMeasureLyrics = scaleDegrees.slice(-8);
-    } else if (selectedLyric === "Solfege") {
-      const solfegeMap = {
-        "Major": majorSolfege,
-        "Natural Minor": naturalMinorSolfege,
-        "Harmonic Minor": harmonicMinorSolfege,
-        "Melodic Minor": melodicMinorSolfege,
-      };
-      firstMeasureLyrics = solfegeMap[selectedScale].slice(0, 8);
-      secondMeasureLyrics = solfegeMap[selectedScale].slice(-8);
-    }
 
     // --- Render ---
     try {
@@ -309,7 +361,10 @@ export default function VexFlowSheet() {
           const acc = firstMeasureAccidentals[i];
           const lyric = firstMeasureLyrics[i];
 
-          if (acc) note.addModifier(new Accidental(acc), 0);
+          if (acc) {
+            note.addModifier(new Accidental(acc), 0);
+          }
+          
 
           if (lyric) {
             const ann = new Annotation(lyric)
@@ -529,6 +584,18 @@ export default function VexFlowSheet() {
           <input
             type="radio"
             name="direction"
+            value="both"
+            checked={directionMode === "both"}
+            onChange={(e) => setDirectionMode(e.target.value)}
+          />
+          Ascending & Descending
+        </label>
+      </div>
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="direction"
             value="ascending"
             checked={directionMode === "ascending"}
             onChange={(e) => setDirectionMode(e.target.value)}
@@ -548,18 +615,6 @@ export default function VexFlowSheet() {
           Descending only
         </label>
       </div>
-      <div>
-        <label>
-          <input
-            type="radio"
-            name="direction"
-            value="both"
-            checked={directionMode === "both"}
-            onChange={(e) => setDirectionMode(e.target.value)}
-          />
-          Ascending & Descending
-        </label>
-      </div>
     </div>
     {/* Octave Toggle, 8va, default, or 8vb */}
     <div style={{ marginBottom: "10px" }}>
@@ -569,11 +624,11 @@ export default function VexFlowSheet() {
           <input
             type="radio"
             name="octaveShift"
-            value="8vb"
-            checked={octaveShift === "8vb"}
+            value="8va"
+            checked={octaveShift === "8va"}
             onChange={(e) => setOctaveShift(e.target.value)}
           />
-          8vb
+          8va
         </label>
       </div>
       <div>
@@ -593,17 +648,18 @@ export default function VexFlowSheet() {
           <input
             type="radio"
             name="octaveShift"
-            value="8va"
-            checked={octaveShift === "8va"}
+            value="8vb"
+            checked={octaveShift === "8vb"}
             onChange={(e) => setOctaveShift(e.target.value)}
           />
-          8va
+          8vb
         </label>
       </div>
     </div>
       {/* Display key and scale */}
-      <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
-        {`${selectedTonic} ${selectedScale}`}
+      <div style={{ fontSize: "24pt", marginBottom: "0px", fontWeight: "bold" }}>
+        {selectedScale === "Major" && `${selectedTonic} ${selectedScale} ${selectedMode}`}
+        {selectedScale !== "Major" && `${selectedTonic} ${selectedScale}`}
       </div>
       {/* Render sheet music */}
       <div ref={containerRef} />
