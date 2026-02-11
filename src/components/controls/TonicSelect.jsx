@@ -1,10 +1,11 @@
 export default function TonicSelect({ value, onChange, selectedScale, majorKeys, minorKeys }) {
   return (
     // Dropdown to select tonic
-    <div style={{ marginBottom: "10px" }}>
+    <div>
       <label>
-        Select Tonic:{" "}
+        <b>Select Tonic:{" "}</b>
         <select
+          className="amethysta-regular"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >

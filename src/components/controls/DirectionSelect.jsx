@@ -2,7 +2,9 @@ export default function DirectionSelect({ value, onChange }) {
   return (
     // Ascending, Descending, or both
     <div style={{ marginBottom: "10px" }}>
-      <label style={{ fontWeight: "bold" }}>Scale Direction:</label>
+      <label>
+        <b>Scale Direction</b>:
+      </label>
       <div>
         <label>
           <input

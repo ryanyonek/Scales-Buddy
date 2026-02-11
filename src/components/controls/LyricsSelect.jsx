@@ -4,8 +4,9 @@ export default function LyricsSelect({ value, onChange }) {
     
     <div style={{ marginBottom: "10px" }}>
       <label>
-        Note Label:{" "}
+        <b>Note Label:{" "}</b>
         <select
+          className="amethysta-regular"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >

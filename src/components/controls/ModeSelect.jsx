@@ -4,8 +4,9 @@ export default function ModeSelect({ value, onChange, modeShifts }) {
 
     <div style={{ marginBottom: "10px" }}>
       <label>
-        Select Major Mode:{" "}
+        <b>Select Major Mode:{" "}</b>
         <select
+          className="amethysta-regular"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >

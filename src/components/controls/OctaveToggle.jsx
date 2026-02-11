@@ -2,7 +2,9 @@ export default function OctaveToggle({ value, onChange }) {
   return (
     // Octave Toggle, 8va, default, or 8vb
     <div style={{ marginBottom: "10px" }}>
-      <label style={{ fontWeight: "bold" }}>Octave:</label>
+      <label>
+        <b>Octave:</b>
+      </label>
       <div>
         <label>
           <input

@@ -8,7 +8,7 @@ export default function AllAccidentalsToggle({ value, onChange }) {
           checked={value} // Bind the 'checked' attribute to the state value
           onChange={(e) => onChange(e.target.checked)} // Call the handler function on change
         />
-        Show All Accidentals {" "}
+        <b>Show All Accidentals {" "}</b>
       </label>
       {/* <p>Checkbox is currently: {showAllAccidentals ? 'Checked' : 'Unchecked'}</p> */}
     </div>

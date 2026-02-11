@@ -9,7 +9,7 @@ export default function CourtesyAccidentalsToggle ({ value, onChange}) {
             checked={value} // Bind the 'checked' attribute to the state value
             onChange={(e) => onChange(e.target.checked)} // Call the handler function on change
           />
-          Show Courtesy Accidentals {" "}
+          <b>Show Courtesy Accidentals {" "}</b>
         </label>
         {/* <p>Checkbox is currently: {showCourtesyAccidentals ? 'Checked' : 'Unchecked'}</p> */}
       </div>

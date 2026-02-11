@@ -1,7 +1,16 @@
+@use 'variables' as vars;
+
 .control-panel {
+  
   gap: 1.0rem;
   max-width: 800px;
+  min-width: 250px;
   margin: 0 auto 0 auto; // center controls block
+  background-color: white;
+  font-family: "Amethysta", serif;
+  font-weight: 400;
+  font-style: normal;
+  border: 1px solid black;
 }
 
 .control-wrapper {
@@ -18,7 +27,7 @@
 select, button {
   padding: 0.6rem 0.8rem;
   border-radius: 4pt;
-  border: 1px solid #e5e7eb;
+  border: 1px solid black;
   font-size: 0.95rem;
 }
 

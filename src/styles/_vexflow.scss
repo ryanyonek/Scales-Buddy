@@ -1,6 +1,9 @@
+@use 'variables' as vars;
+
 svg {
   display: block;
   width: auto;   // prevent stretching
+  // border: 1px solid black;
 }
 
 .sheet-wrapper {

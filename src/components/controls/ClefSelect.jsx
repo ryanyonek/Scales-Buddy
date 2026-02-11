@@ -3,8 +3,9 @@ export default function ClefSelect({ value, onChange }) {
     // Clef Dropdown
       <div style={{ marginBottom: "10px" }}>
         <label>
-          Select Clef:{" "}
+          <b>Select Clef:{" "}</b>
           <select
+          className="amethysta-regular"
             value={value}
             onChange={(e) => onChange(e.target.value)}
           >
