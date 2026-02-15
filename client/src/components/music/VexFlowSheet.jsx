@@ -1,6 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useScaleState } from "../../hooks/useScaleState";
-import { scaleTypes, majorKeys, minorKeys, modeShifts, transpositionIntervals } from "../../utils/musicTheory"
+import {
+  scaleTypes,
+  majorKeys,
+  minorKeys,
+  modeShifts,
+  transpositionKeys
+} from "../../../../server/services/theory/constants.js";
+
 import VexFlowRenderer from "./VexFlowRenderer";
 import ScaleSelect from "../controls/ScaleSelect";
 import ClefSelect from "../controls/ClefSelect";
@@ -29,6 +36,63 @@ export default function VexFlowSheet(props) {
   const [octaveShift, setOctaveShift] = state.octaveShift;
   const [selectedTonic, setSelectedTonic] = state.selectedTonic;
   const [transpositionInterval, setTranspositionInterval] = state.transpositionInterval;
+
+  // ✅ scaleData state INSIDE component
+  const [scaleData, setScaleData] = useState(null);
+
+  // ✅ Build options INSIDE component
+  const options = {
+    tonic: selectedTonic,
+    scale: selectedScale,
+    clef: selectedClef,
+    showAllAccidentals,
+    showCourtesyAccidentals,
+    directionMode,
+    mode: selectedMode,
+    showNoteLabels,
+    lyric: selectedLyric,
+    octaveShift,
+    transpositionInterval
+  };
+
+  // ✅ Fetch scale from backend
+  useEffect(() => {
+    async function fetchScale() {
+      try {
+        const res = await fetch("/api/scale", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(options),
+        });
+
+        if (!res.ok) {
+          console.error("Scale API error:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        setScaleData(data);
+
+      } catch (err) {
+        console.error("Fetch failed:", err);
+      }
+    }
+
+    fetchScale();
+  }, [
+    selectedTonic,
+    selectedScale,
+    selectedClef,
+    showAllAccidentals,
+    showCourtesyAccidentals,
+    directionMode,
+    selectedMode,
+    showNoteLabels,
+    selectedLyric,
+    octaveShift,
+    transpositionInterval
+  ]);
+
 
 useEffect(() => {
   if (selectedScale === "Major" && !majorKeys.includes(selectedTonic)) {
@@ -118,7 +182,7 @@ useEffect(() => {
         <TranspositionSelect 
         value={transpositionInterval}
         onChange={setTranspositionInterval}
-        intervals={transpositionIntervals}
+        intervals={transpositionKeys}
       />)}
 
       <div className="scale-name-wrapper">
@@ -129,18 +193,9 @@ useEffect(() => {
         />
       </div>
         <VexFlowRenderer
-          selectedTonic={selectedTonic}
-          selectedScale={selectedScale}
-          selectedClef={selectedClef}
-          showAllAccidentals={showAllAccidentals}
-          showCourtesyAccidentals={showCourtesyAccidentals}
-          directionMode={directionMode}
-          selectedMode={selectedMode}
-          showNoteLabels={showNoteLabels}
-          selectedLyric={selectedLyric}
-          octaveShift={octaveShift}
+          scaleData={scaleData}
+          options={options}
         />
-
     </div>
   );
 }

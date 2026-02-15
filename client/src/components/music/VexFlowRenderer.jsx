@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 import { Renderer } from "vexflow";
-import { renderScale } from "../../utils/musicTheory";
+import { renderScale } from "../../../lib/render/vexflowRenderer";
 
-export default function VexFlowRenderer(props) {
+export default function VexFlowRenderer({ scaleData, options }) {
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !scaleData) return;
 
     containerRef.current.innerHTML = "";
 
@@ -18,10 +18,8 @@ export default function VexFlowRenderer(props) {
     renderer.resize(1200, 300);
     const context = renderer.getContext();
 
-    renderScale({ context, ...props });
-  }, [props]);
+    renderScale({ context, scaleData, options });
+  }, [scaleData, options]);
 
-  return (
-      <div ref={containerRef} />
-  )
+  return <div ref={containerRef} />;
 }
