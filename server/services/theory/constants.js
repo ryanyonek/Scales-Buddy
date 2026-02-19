@@ -76,7 +76,7 @@ export const transpositionMap = {
   "D+": -2,
   "Db+": -1,
   "C": 0,
-  "H": 1,
+  "B": 1,
   "Bb-": 2,
   "A-": 3,
   "Ab-": 4,

@@ -1,10 +1,13 @@
 import { chromaticFlatKeys, chromaticSharpKeys, transpositionMap, majorKeys, minorKeys } from "./constants.js";
 
-export function transposeTonic(tonic, key) {
+export function transposeTonic(tonic, key, scale) {
+  //console.log(`Tonic: ${tonic}`);
+  //console.log(`Transposition Key: ${key}`)
   //console.log(`Flat Key Index: ${chromaticFlatKeys.indexOf(tonic)}`);
   //console.log(`Sharp Key Index: ${chromaticSharpKeys.indexOf(tonic)}`);
   //console.log(`Transposing instrument key: ${key}`);
   //console.log(`Concert pitch key: ${tonic}`)
+  //console.log(`Scale: ${scale}`)
   
   let index = 0;
   let keys = [];
@@ -29,10 +32,18 @@ export function transposeTonic(tonic, key) {
 
   const newIndex = (index + interval + 12) % 12;
 
-  if (majorKeys.indexOf(keys[newIndex]) !== -1) {
-    keys = chromaticFlatKeys;
-  } else if (minorKeys.indexOf(keys[newIndex]) !== -1) {
-    keys = chromaticSharpKeys;
+  if (minorKeys.indexOf(keys[newIndex]) === -1 && scale !== "Major") {
+    if (keys === chromaticFlatKeys) {
+      keys = chromaticSharpKeys;
+    } else {
+      keys = chromaticFlatKeys
+    }
+  } else if (majorKeys.indexOf(keys[newIndex]) === -1 && scale === "Major") {
+    if (keys === chromaticFlatKeys) {
+      keys = chromaticSharpKeys;
+    } else {
+      keys = chromaticFlatKeys
+    }
   }
 
   return keys[newIndex];
