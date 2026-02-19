@@ -22,20 +22,21 @@ export default function Transpose() {
     <>
       <h1  className="page-title">Transpose Scales</h1>
 
-      <h2 className="scale-title">Sounding Pitch (Concert)</h2>
       <VexFlowSheet
         config={config}
         setConfig={setConfig}
         endpoint="/api/scale"
         variant="original"
+        scaleTitle="Sounding Pitch (Concert)"
       />
 
-      <h2 className="scale-title">Written Pitch (Transposed)</h2>
+      
       <VexFlowSheet
         config={config}
         setConfig={setConfig}
         endpoint="/api/transpose"
         variant="transpose"
+        scaleTitle="Written Pitch (Transposed)"
       />
     </>
   );

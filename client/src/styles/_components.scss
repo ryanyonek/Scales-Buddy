@@ -44,7 +44,15 @@ select, button {
   border-radius: 4pt;
   border: 1px solid black;
   font-size: 0.95rem;
+  background-color: white;
+}
 
+.volume-slider {
+  //background-color: white;
+}
+
+.page-title {
+  margin: 0.5rem 0 0.5rem 0;
 }
 
 .scale-title {
@@ -53,6 +61,14 @@ select, button {
 
 .big-controls {
   font-size: 14pt;
+}
+
+.audio-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  justify-content: center;
+  align-items: center;
 }
 
 @media (max-width: 640px) {

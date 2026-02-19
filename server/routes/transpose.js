@@ -8,13 +8,11 @@ router.post("/", (req, res) => {
   try {
     const config = req.body;
 
-    console.log(req.body);
-
     //console.log(`Config Requested: ${config}`);
 
     const key = config.transpositionKey;
 
-    console.log(`Transposition key: ${key}`);
+    //console.log(`Transposition key: ${key}`);
 
     const newTonic = transposeTonic(config.tonic, key, config.scale);
 

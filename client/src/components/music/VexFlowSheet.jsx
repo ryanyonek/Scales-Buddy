@@ -22,8 +22,9 @@ import TranspositionSelect from "../controls/TranspositionSelect";
 import OctaveSelect from "../controls/OctaveSelect";
 import ShowControls from "../controls/ShowControls.jsx";
 import ShowModeToggle from "../controls/ShowModeToggle.jsx";
+import { useToneScaleAudio } from "../../hooks/useToneScaleAudio.js";
 
-export default function VexFlowSheet({ config, setConfig, endpoint, variant }) {
+export default function VexFlowSheet({ config, setConfig, endpoint, variant, scaleTitle }) {
 
   // ✅ scaleData state INSIDE component
   const [scaleData, setScaleData] = useState(null);
@@ -46,6 +47,14 @@ export default function VexFlowSheet({ config, setConfig, endpoint, variant }) {
   } = config ;
 
   const options = config;
+
+  const { play, stop, setVolume } = useToneScaleAudio();
+  const [tempo, setTempo] = useState(1);
+  const [volume, setVolumeState] = useState(-20); // dB
+
+  function formatForTone(note) {
+    return note.replace("/", "");
+  }
 
   // ✅ Fetch scale from backend
   useEffect(() => {
@@ -92,6 +101,15 @@ useEffect(() => {
     }));
   }
 }, [scale, tonic]);
+
+const allNotes =
+  scaleData?.firstMeasure?.notes &&
+  scaleData?.secondMeasure?.notes
+    ? [
+        ...scaleData.firstMeasure.notes,
+        ...scaleData.secondMeasure.notes
+      ].map(note => formatForTone(note))
+    : [];
 
   return (
     <div>
@@ -151,12 +169,12 @@ useEffect(() => {
                 }
               />
             )}
-            <ShowModeToggle 
+            {scale === "Major" && <ShowModeToggle 
               value={showMode}
               onChange={(value) =>
                 setConfig(prev => ({ ...prev, showMode: value }))
               }
-            />
+            />}
             {scale === "Major" && showMode && (
               <ModeSelect 
                 value={mode}
@@ -204,6 +222,8 @@ useEffect(() => {
           
         </div> )}
 
+        
+
         {variant === "transpose" && (
           <TranspositionSelect 
           value={transpositionKey}
@@ -212,6 +232,8 @@ useEffect(() => {
           }
           keys={transpositionKeys}
         />)}
+
+        <h2 className="scale-title">{scaleTitle}</h2>
 
         <div className="scale-name-wrapper">
           <ScaleNameDisplay 
@@ -229,6 +251,45 @@ useEffect(() => {
             scaleData={scaleData}
             options={options}
           />
+          {variant == "original" &&
+          <div className="audio-controls">
+            <button
+              onClick={() => play(allNotes, tempo, volume)}
+            >
+              Play
+            </button>
+
+            <button onClick={stop}>
+              Stop
+            </button>
+
+            <label>
+              <select
+                value={tempo}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setTempo(val);
+                }}
+              >
+                <option value={1}>1x</option>
+                <option value={1.25}>1.25x</option>
+                <option value={1.5}>1.5x</option>
+                <option value={2}>2x</option>
+              </select>
+            </label>
+
+            <label className="volume-slider">
+              Volume:{" "}
+              <input
+                type="range"
+                min="-30"
+                max="0"
+                step="1"
+                value={volume}
+                onChange={(e) => setVolumeState(Number(e.target.value))}
+              />
+            </label>
+          </div>}
       </div>
     </div>
   );
